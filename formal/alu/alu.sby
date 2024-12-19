@@ -1,0 +1,23 @@
+[tasks]
+prove
+cover
+
+[options]
+prove: mode prove
+cover: mode cover
+depth 10  # Increased depth for sequential properties
+
+[engines]
+prove: smtbmc
+cover: smtbmc
+
+[script]
+read -formal -sv alu.v
+hierarchy -top alu
+prep -top alu
+
+[files]
+../../designs/alu.v
+
+[file defines.sv]
+`define FORMAL
