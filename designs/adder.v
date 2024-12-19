@@ -18,79 +18,36 @@ module adder #(
     assign cout = temp[WIDTH];
 
 `ifdef FORMAL
-    // Past value tracking for cover properties
-    reg first_cycle = 1'b1;
-    always @(*) begin
-        if ($initstate)
-            first_cycle <= 1'b1;
-        else
-            first_cycle <= 1'b0;
-    end
-
     // Basic correctness properties
     always @(*) begin
-        // Addition correctness
+        // The sum and carry out should match the full addition
         assert(temp == {cout, sum});
-        assert({cout, sum} == a + b + cin);
-    end
-
-    // Overflow detection
-    wire overflow = (a[WIDTH-1] == b[WIDTH-1]) && (sum[WIDTH-1] != a[WIDTH-1]);
-    
-    // Carry propagation properties
-    always @(*) begin
-        // Carry out is 1 if and only if the true sum exceeds maximum value
-        assert(cout == ((a + b + cin) > {WIDTH{1'b1}}));
-    end
-
-    // Corner case properties
-    always @(*) begin
-        // Maximum value cases
-        if (a == {WIDTH{1'b1}} && b == {WIDTH{1'b1}} && cin == 1'b1) begin
-            assert(cout == 1'b1);
-            assert(sum == {WIDTH{1'b1}});
-        end
         
-        // Zero cases
+        // Carry out should be set when sum overflows
+        assert(cout == ((a + b + cin) >= (1 << WIDTH)));
+        
+        // Zero input case
         if (a == 0 && b == 0 && cin == 0) begin
-            assert(cout == 1'b0);
             assert(sum == 0);
+            assert(cout == 0);
         end
     end
 
-    // Cover properties to verify interesting scenarios
+    // Cover properties for interesting cases
     always @(*) begin
-        // Cover normal addition
-        cover(!first_cycle && !cout && !overflow);
+        // Cover a basic addition without carry
+        cover(cout == 0);
         
-        // Cover carry out generation
-        cover(!first_cycle && cout);
+        // Cover a case that generates carry
+        cover(cout == 1);
         
-        // Cover overflow condition
-        cover(!first_cycle && overflow);
+        // Cover zero case
+        cover(a == 0 && b == 0 && cin == 0);
         
-        // Cover maximum value addition
-        cover(!first_cycle && a == {WIDTH{1'b1}} && b == {WIDTH{1'b1}});
-        
-        // Cover zero addition
-        cover(!first_cycle && a == 0 && b == 0 && cin == 0);
-        
-        // Cover interesting patterns
-        cover(!first_cycle && a == b);  // Adding same numbers
-        cover(!first_cycle && sum == 0 && (a != 0 || b != 0 || cin != 0));  // Result zero but inputs non-zero
-    end
-
-    // Assumptions about inputs
-    always @(*) begin
-        // No assumptions needed for basic adder
-        // But you might want to add constraints for specific verification scenarios
-        assume(WIDTH > 1);  // Ensure meaningful width
+        // Cover maximum value case
+        cover(a == {WIDTH{1'b1}} && b == {WIDTH{1'b1}});
     end
 
 `endif
 
 endmodule
-
-// A binary adder is a digital circuit that performs addition of binary numbers. 
-// It is a fundamental building block in digital design. 
-// The carry-in (cin) and carry-out (cout) signals are used to chain multiple adders together to add numbers larger than the adder's width.

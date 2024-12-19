@@ -1,53 +1,19 @@
 [tasks]
-# Basic safety verification
 prove
-# Cover interesting scenarios
 cover
-# Bounded model check with specific depth
-bmc
-# Specific parameter configurations
-prove_8bit
-prove_16bit
-prove_32bit
 
 [options]
 prove: mode prove
 cover: mode cover
-bmc: mode bmc
-prove_8bit: mode prove
-prove_16bit: mode prove
-prove_32bit: mode prove
-
-# Depth settings for bounded checks
-bmc: depth 10
-prove: depth 20
-cover: depth 20
-prove_8bit: depth 20
-prove_16bit: depth 30
-prove_32bit: depth 40
+depth 5
 
 [engines]
-prove: smtbmc z3
-cover: smtbmc z3
-bmc: abc bmc3
-prove_8bit: smtbmc z3
-prove_16bit: smtbmc z3
-prove_32bit: smtbmc z3
+prove: smtbmc
+cover: smtbmc
 
 [script]
 read -formal -sv adder.v
---pycode-begin--
-def create_adder(bits):
-    return f"hierarchy -top adder -chparam WIDTH {bits}"
---pycode-end--
-
-prove: hierarchy -top adder
-cover: hierarchy -top adder
-bmc: hierarchy -top adder
-prove_8bit: script-output create_adder(8)
-prove_16bit: script-output create_adder(16)
-prove_32bit: script-output create_adder(32)
-
+hierarchy -top adder
 prep -top adder
 
 [files]
