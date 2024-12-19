@@ -2,63 +2,175 @@
 
 This repository contains a collection of SystemVerilog designs specifically created for learning formal verification techniques. Each design is crafted to demonstrate different aspects of hardware design and various verification challenges.
 
+## Project Organization
+
+```
+formal-verification-samples/
+├── designs/          # RTL design files
+├── formal/          # Formal verification files
+│   ├── adder/      # Verification for adder
+│   ├── alu/        # Verification for ALU
+│   └── ...
+├── tests/          # Traditional simulation testbenches
+└── scripts/        # Utility scripts
+```
+
 ## Design Categories
 
 ### 1. Arithmetic Circuits
-- **Simple Adder** (`designs/adder.v`): Parameterized N-bit adder with carry in/out
-- **Multiplier** (`designs/multiplier.v`): Sequential multiplier using shift-and-add algorithm
-- **ALU** (`designs/alu.v`): Basic ALU with add, subtract, AND, OR, XOR operations
+- **Simple Adder** (`designs/adder.v`)
+  - Parameterized N-bit adder with carry in/out
+  - Verification Properties:
+    - Result correctness
+    - Overflow detection
+    - Carry propagation
+
+- **Multiplier** (`designs/multiplier.v`)
+  - Sequential multiplier using shift-and-add algorithm
+  - Verification Properties:
+    - Result correctness
+    - Operation completion
+    - Busy flag consistency
+    - Reset behavior
+
+- **ALU** (`designs/alu.v`)
+  - Basic ALU with arithmetic and logical operations
+  - Verification Properties:
+    - Operation correctness
+    - Flag accuracy (zero, negative, overflow)
+    - Invalid operation handling
 
 ### 2. Data Buffers
-- **FIFO** (`designs/fifo.v`): Synchronous FIFO with configurable depth and width
-- **Shift Register** (`designs/shift_register.v`): Parameterized shift register with parallel load
-- **Ring Counter** (`designs/ring_counter.v`): Simple ring counter with one-hot encoding
+- **FIFO** (`designs/fifo.v`)
+  - Synchronous FIFO with configurable depth
+  - Verification Properties:
+    - Full/Empty flag correctness
+    - Data integrity
+    - No data loss
+    - Pointer wraparound
 
 ### 3. Finite State Machines
-- **Traffic Light Controller** (`designs/traffic_light.v`): Basic traffic light system
-- **Vending Machine** (`designs/vending_machine.v`): Simple vending machine with coin input and product output
-- **Sequence Detector** (`designs/sequence_detector.v`): Detects specific bit patterns in input stream
+- **Traffic Light Controller** (`designs/traffic_light.v`)
+  - Traffic light system with emergency override
+  - Verification Properties:
+    - Safety (no conflicting signals)
+    - Liveness (each direction eventually served)
+    - Timing constraints
+    - Emergency response
 
-### 4. Additional Designs
-- **Arbiter** (`designs/arbiter.v`): Round-robin arbiter for resource sharing
-- **Memory Controller** (`designs/memory_controller.v`): Simple memory controller with read/write operations
+- **Sequence Detector** (`designs/sequence_detector.v`)
+  - Pattern detector for serial bit streams
+  - Verification Properties:
+    - Pattern detection correctness
+    - No false positives
+    - Overlapping sequences
+    - Reset behavior
 
-## Verification Challenges
+### 4. Resource Management
+- **Arbiter** (`designs/arbiter.v`)
+  - Round-robin arbiter for multiple requestors
+  - Verification Properties:
+    - Mutual exclusion
+    - Fairness
+    - No deadlock
+    - Priority handling
 
-Each design presents unique verification challenges:
+## Formal Verification Approach
 
-1. **Arithmetic Circuits**
-   - Overflow detection
-   - Timing constraints
-   - Corner cases in operations
+### 1. Safety Properties
+Safety properties ensure that "bad things never happen". Examples:
+- No conflicting outputs
+- No buffer overflow/underflow
+- Valid state transitions only
 
-2. **Data Buffers**
-   - Full/Empty conditions
-   - Data integrity
-   - Race conditions
+### 2. Liveness Properties
+Liveness properties ensure that "good things eventually happen". Examples:
+- Every request eventually gets served
+- Operations complete in finite time
+- Deadlock freedom
 
-3. **FSMs**
-   - State reachability
-   - Deadlock detection
-   - Invalid state transitions
+### 3. Cover Properties
+Cover properties demonstrate reachability. Examples:
+- All states are reachable
+- Key scenarios can occur
+- Corner cases are possible
 
-4. **Additional Designs**
-   - Resource contention
-   - Protocol compliance
-   - Fairness properties
+### 4. Auxiliary Verification
+Additional verification techniques:
+- Assumptions for constraining inputs
+- Assertions for checking invariants
+- Witnesses for demonstrating behavior
+
+## Using SymbiYosys
+
+Each design has a corresponding `.sby` file in its formal verification directory. The file specifies:
+1. Verification tasks (prove, cover)
+2. Verification engine (usually smtbmc)
+3. Source files and top module
+4. Verification options and settings
+
+Example `.sby` file structure:
+```
+[tasks]
+prove
+cover
+
+[options]
+prove: mode prove
+cover: mode cover
+
+[engines]
+smtbmc z3
+
+[script]
+read -formal design.v
+prep -top module_name
+
+[files]
+design.v
+```
 
 ## Getting Started
 
-1. Each design file contains:
-   - Module implementation
-   - Parameters for configuration
-   - Port descriptions
-   - Behavioral logic
+1. Choose a design to verify
+2. Review its formal properties in the source file
+3. Examine the `.sby` configuration
+4. Run verification using the Makefile:
+   ```bash
+   make formal_<design_name>
+   ```
+5. Analyze the results in the formal/<design_name> directory
 
-2. Suggested verification properties are included as comments in each file
+## Common Verification Patterns
 
-3. Recommended verification approach:
-   - Start with simple safety properties
-   - Progress to liveness properties
-   - Explore corner cases
-   - Verify timing constraints 
+1. **Reset Verification**
+   ```systemverilog
+   property reset_check;
+      @(posedge clk) !rst_n |-> output == '0;
+   endproperty
+   ```
+
+2. **State Transition Safety**
+   ```systemverilog
+   property valid_transition;
+      @(posedge clk) disable iff (!rst_n)
+         current_state == STATE_A |=> 
+         current_state inside {STATE_B, STATE_C};
+   endproperty
+   ```
+
+3. **Request-Grant Properties**
+   ```systemverilog
+   property request_to_grant;
+      @(posedge clk) disable iff (!rst_n)
+         request |-> ##[0:3] grant;
+   endproperty
+   ```
+
+4. **Mutual Exclusion**
+   ```systemverilog
+   property mutual_exclusion;
+      @(posedge clk) disable iff (!rst_n)
+         $onehot0(grant);
+   endproperty
+   ```
